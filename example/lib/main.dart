@@ -14,9 +14,6 @@ class MyApp extends StatelessWidget {
       title: 'Radial gauge',
       theme: ThemeData(
         primarySwatch: Colors.blue,
-        tabBarTheme: const TabBarTheme(
-          labelColor: Colors.black,
-        ),
       ),
       home: const Scaffold(
         body: RadialGaugeExamplePage(),

@@ -1,32 +1,25 @@
 import 'dart:math' as math;
-
 import 'package:equatable/equatable.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:gauge_indicator/gauge_indicator.dart';
 
 class MoonPointer extends Equatable implements GaugePointer {
   const MoonPointer({
     required this.radius,
-    this.pointerValue = 0,
-    this.color,
+    required this.pointerValue,
+    this.color = const Color(0xFFFECB03),
     this.position = const GaugePointerPosition.surface(),
     this.border,
-    this.gradient = const RadialGradient(
-      colors: [
-        Color(0xFFFFFDEB),
-        Color(0xFFFFF8D1),
-        Color(0xFFFFE6A3),
-        Color(0xFFFFC68F),
-      ],
-      center: Alignment.topRight,
-      radius: 0.8,
-    ),
+    this.gradient,
     this.shadow,
-    this.rotation = 180,
+    this.rotation = math.pi * 2, // Default to 360 degrees in radians
   });
 
+  /// The radius of the moon shape. The total size will be Size.
+  /// square(radius * 2).
   final double radius;
+
+  // Value from 0.0 (New Moon) to 1.0 (Full Moon/New Moon)
   final double pointerValue;
 
   @override
@@ -40,53 +33,43 @@ class MoonPointer extends Equatable implements GaugePointer {
   @override
   final Shadow? shadow;
 
-  /// Rotation in degrees
+  /// Rotation in radians (e.g., math.pi for 180 degrees).
   final double rotation;
 
   @override
-  Size get size => Size.square(radius);
+  Size get size => Size.square(radius * 2); // Size is diameter, not radius
 
   @override
   Path get path {
-    final center = size.width / 2;
+    final diameter = size.width;
+    final center = diameter / 2;
     final centerOffset = Offset(center, center);
 
-    // Base full moon
+    // Base moon (full circle)
     final base = Path()
       ..addOval(Rect.fromCircle(center: centerOffset, radius: radius));
 
-    // Cutout circle (shadow faces up-right)
-    final offset = Offset(-radius * 0.6, radius * 0.4);
-    final cutout = Path()
-      ..addOval(Rect.fromCircle(center: centerOffset + offset, radius: radius));
+    // The cutout circle's center is shifted horizontally.
+    // Start the cutout slightly to the right of the base circle's center.
+    final cutoutCenter = Offset(centerOffset.dx + radius - 2, centerOffset.dy);
 
-    // Create crescent by subtracting paths
+    // The cutout circle is the same size as the base circle.
+    final cutout = Path()
+      ..addOval(Rect.fromCircle(center: cutoutCenter, radius: radius));
+
+    // Create crescent by subtracting paths (Difference = base - cutout)
     final crescent = Path.combine(PathOperation.difference, base, cutout);
 
-    // Rotate crescent
-    final cosA = math.cos(rotation);
-    final sinA = math.sin(rotation);
+    // Apply rotation around the center (centerOffset)
+    final angle = rotation;
 
-    final matrix = Float64List.fromList([
-      cosA,
-      sinA,
-      0,
-      0,
-      -sinA,
-      cosA,
-      0,
-      0,
-      0,
-      0,
-      1,
-      0,
-      center - center * cosA + center * sinA,
-      center - center * cosA - center * sinA,
-      0,
-      1,
-    ]);
+    final transformMatrix = Matrix4.identity()
+      ..translateByDouble(centerOffset.dx, centerOffset.dy, 0, 1)
+      ..rotateZ(angle)
+      ..translateByDouble(-centerOffset.dx, -centerOffset.dy, 0, 1);
 
-    return crescent.transform(matrix);
+    // Only apply the rotation if it's not the default 0 rotation
+    return crescent.transform(transformMatrix.storage);
   }
 
   @override
@@ -94,13 +77,13 @@ class MoonPointer extends Equatable implements GaugePointer {
 
   @override
   List<Object?> get props => [
-    size,
-    color,
-    border,
-    position,
-    gradient,
-    shadow,
-    pointerValue,
-    rotation,
-  ];
+        size,
+        color,
+        border,
+        position,
+        gradient,
+        shadow,
+        pointerValue,
+        rotation,
+      ];
 }
